@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Security SOC Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📊</text></svg>">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .risk-low { color: #00ff41; text-shadow: 0 0 8px rgba(0,255,65,0.6); }
+        .risk-medium { color: #ffd60a; text-shadow: 0 0 8px rgba(255,214,10,0.6); }
+        .risk-high { color: #ff2d55; text-shadow: 0 0 8px rgba(255,45,85,0.6); }
+        .risk-critical { color: #ff2d55; text-shadow: 0 0 12px rgba(255,45,85,0.8), 0 0 30px rgba(255,45,85,0.4); animation: criticalPulse 1s ease-in-out infinite; }
+        @keyframes criticalPulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
+
+        .cards-row {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 0;
+            margin-bottom: 10px;
+        }
+
+        .dash-card {
+            background: rgba(0, 20, 30, 0.85);
+            border: 1px solid rgba(0, 212, 255, 0.25);
+            margin: 8px;
+            padding: 22px 18px 18px;
+            display: inline-block;
+            width: 160px;
+            position: relative;
+            clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 12px 100%, 0 calc(100% - 12px));
+            transition: all 0.3s ease;
+            animation: cardAppear 0.6s ease backwards;
+            backdrop-filter: blur(8px);
+            vertical-align: top;
+        }
+
+        @keyframes cardAppear {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .dash-card:nth-child(1) { animation-delay: 0.1s; }
+        .dash-card:nth-child(2) { animation-delay: 0.2s; }
+        .dash-card:nth-child(3) { animation-delay: 0.3s; }
+        .dash-card:nth-child(4) { animation-delay: 0.4s; }
+        .dash-card:nth-child(5) { animation-delay: 0.5s; }
+
+        .dash-card:hover {
+            border-color: rgba(0, 255, 65, 0.5);
+            background: rgba(0, 255, 65, 0.04);
+            transform: translateY(-3px);
+            box-shadow: 0 8px 30px rgba(0, 212, 255, 0.1);
+        }
+
+        .dash-card .card-label {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.65rem;
+            color: #5a8fa0;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            margin-bottom: 10px;
+            display: block;
+        }
+
+        .dash-card .card-value {
+            font-family: 'Orbitron', monospace;
+            font-size: 1.9rem;
+            font-weight: 700;
+            color: #00d4ff;
+            text-shadow: 0 0 8px rgba(0, 212, 255, 0.6), 0 0 20px rgba(0, 212, 255, 0.3);
+            letter-spacing: 1px;
+            display: block;
+            animation: countUp 0.8s ease;
+        }
+
+        @keyframes countUp {
+            from { opacity: 0; transform: scale(0.8); }
+            to { opacity: 1; transform: scale(1); }
+        }
+
+        .dash-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 20px;
+            width: 30px; height: 1px;
+            background: #00d4ff;
+            box-shadow: 0 0 6px rgba(0,212,255,0.5);
+        }
+
+        .back-nav {
+            display: inline-block;
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.78rem;
+            letter-spacing: 2px;
+            color: #00d4ff;
+            text-decoration: none;
+            padding: 8px 18px;
+            border: 1px solid rgba(0, 212, 255, 0.25);
+            border-radius: 2px;
+            margin-bottom: 30px;
+            transition: all 0.3s ease;
+        }
+
+        .back-nav:hover {
+            color: #00ff41;
+            border-color: rgba(0, 255, 65, 0.5);
+            background: rgba(0, 255, 65, 0.05);
+        }
+
+        .analytics-title {
+            font-family: 'Orbitron', monospace;
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: #00d4ff;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            margin: 30px 0 20px;
+            text-shadow: 0 0 8px rgba(0, 212, 255, 0.6);
+        }
+
+        .analytics-title::before {
+            content: '// ';
+            color: #00ff41;
+            opacity: 0.7;
+        }
+
+        .chart-grid {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 16px;
+            margin-top: 10px;
+        }
+
+        .chart-panel {
+            background: rgba(0, 10, 20, 0.8);
+            border: 1px solid rgba(0, 212, 255, 0.2);
+            border-radius: 2px;
+            padding: 16px;
+            backdrop-filter: blur(8px);
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .chart-panel:hover {
+            border-color: rgba(0, 212, 255, 0.4);
+            box-shadow: 0 0 20px rgba(0, 212, 255, 0.08);
+        }
+
+        .chart-panel::before {
+            content: '';
+            position: absolute;
+            top: -1px; left: 16px;
+            width: 40px; height: 2px;
+            background: #00d4ff;
+            box-shadow: 0 0 6px rgba(0,212,255,0.5);
+        }
+
+        .chart-panel-title {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.68rem;
+            letter-spacing: 2px;
+            color: #5a8fa0;
+            text-transform: uppercase;
+            margin-bottom: 12px;
+            text-align: left;
+            padding-left: 4px;
+            border-left: 2px solid #00d4ff;
+        }
+    </style>
+</head>
+
+<body>
+
+<!-- Matrix rain canvas -->
+<canvas id="matrix-canvas"></canvas>
+
+<div class="container">
+
+    <!-- Header -->
+    <div style="margin-bottom: 8px;">
+        <div class="section-label">SOC COMMAND CENTER // THREAT INTELLIGENCE DASHBOARD</div>
+    </div>
+
+    <h1 data-text="📊 SOC Security Dashboard">📊 SOC Security Dashboard</h1>
+
+    <div class="status-bar" style="margin-bottom: 28px;">
+        <span><span class="dot"></span>MONITORING ACTIVE</span>
+        <span style="color: #2a4a5a;">|</span>
+        <span><span class="dot" style="background:#00d4ff; box-shadow: 0 0 8px rgba(0,212,255,0.6); animation-delay:0.4s;"></span>THREAT ANALYSIS</span>
+        <span style="color: #2a4a5a;">|</span>
+        <span><span class="dot" style="animation-delay:0.8s;"></span>REALTIME FEED</span>
+    </div>
+
+    <a href="/" class="back-nav">← BACK TO CONSOLE</a>
+
+    <!-- SUMMARY CARDS -->
+    <div class="cards-row">
+        <div class="dash-card">
+            <span class="card-label">Total Events</span>
+            <span class="card-value">{{ data.total_events }}</span>
+        </div>
+
+        <div class="dash-card">
+            <span class="card-label">Failed Logins</span>
+            <span class="card-value" style="color: #ff2d55; text-shadow: 0 0 8px rgba(255,45,85,0.6), 0 0 20px rgba(255,45,85,0.3);">{{ data.failed_logins }}</span>
+        </div>
+
+        <div class="dash-card">
+            <span class="card-label">Success Logins</span>
+            <span class="card-value" style="color: #00ff41; text-shadow: 0 0 8px rgba(0,255,65,0.6), 0 0 20px rgba(0,255,65,0.3);">{{ data.success_logins }}</span>
+        </div>
+
+        <div class="dash-card">
+            <span class="card-label">Risk Score</span>
+            <span class="card-value">{{ score }}</span>
+        </div>
+
+        <div class="dash-card">
+            <span class="card-label">Risk Level</span>
+            <span class="card-value" style="font-size: 1.1rem; letter-spacing: 2px;">{{ level }}</span>
+        </div>
+    </div>
+
+    <hr>
+
+    <div class="analytics-title">Security Analytics</div>
+
+    <div class="chart-grid">
+        <div class="chart-panel">
+            <div class="chart-panel-title">Login Distribution</div>
+            <div style="width: 300px;">
+                <canvas id="loginChart"></canvas>
+            </div>
+        </div>
+
+        <div class="chart-panel">
+            <div class="chart-panel-title">Event Breakdown</div>
+            <div style="width: 300px;">
+                <canvas id="eventChart"></canvas>
+            </div>
+        </div>
+
+        <div class="chart-panel">
+            <div class="chart-panel-title">Alert Severity</div>
+            <div style="width: 300px;">
+                <canvas id="alertChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<!-- SAFE DATA TRANSFER -->
+<script>
+    const dashboardData = JSON.parse('{{ data | tojson | safe }}');
+</script>
+
+<!-- Chart.js global defaults for hacker theme -->
+<script>
+    Chart.defaults.color = '#5a8fa0';
+    Chart.defaults.font.family = "'Share Tech Mono', monospace";
+    Chart.defaults.font.size = 11;
+    Chart.defaults.plugins.legend.labels.color = '#5a8fa0';
+    Chart.defaults.plugins.legend.labels.padding = 16;
+    Chart.defaults.plugins.legend.labels.usePointStyle = true;
+    Chart.defaults.plugins.legend.labels.pointStyleWidth = 8;
+
+    const chartDefaults = {
+        responsive: true,
+        maintainAspectRatio: true,
+        plugins: {
+            legend: {
+                labels: {
+                    color: '#5a8fa0',
+                    font: { family: "'Share Tech Mono', monospace", size: 11 }
+                }
+            },
+            tooltip: {
+                backgroundColor: 'rgba(0, 10, 20, 0.95)',
+                borderColor: 'rgba(0, 212, 255, 0.4)',
+                borderWidth: 1,
+                titleColor: '#00d4ff',
+                bodyColor: '#c8f5ff',
+                titleFont: { family: "'Orbitron', monospace", size: 11 },
+                bodyFont: { family: "'Share Tech Mono', monospace", size: 11 },
+                padding: 12,
+                cornerRadius: 2,
+                displayColors: true
+            }
+        }
+    };
+
+    // ----------------------------
+    // LOGIN CHART
+    // ----------------------------
+    new Chart(document.getElementById('loginChart'), {
+        type: 'doughnut',
+        data: {
+            labels: ['Success', 'Failed'],
+            datasets: [{
+                data: [dashboardData.success_logins, dashboardData.failed_logins],
+                backgroundColor: ['rgba(0, 255, 65, 0.7)', 'rgba(255, 45, 85, 0.7)'],
+                borderColor: ['#00ff41', '#ff2d55'],
+                borderWidth: 1,
+                hoverBackgroundColor: ['rgba(0, 255, 65, 0.9)', 'rgba(255, 45, 85, 0.9)']
+            }]
+        },
+        options: {
+            ...chartDefaults,
+            cutout: '65%',
+            plugins: {
+                ...chartDefaults.plugins,
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        color: '#5a8fa0',
+                        font: { family: "'Share Tech Mono', monospace", size: 10 },
+                        padding: 12
+                    }
+                }
+            }
+        }
+    });
+
+    // ----------------------------
+    // EVENT CHART
+    // ----------------------------
+    const eventCounts = {
+        success: dashboardData.success_logins,
+        failed: dashboardData.failed_logins,
+        unknown: dashboardData.total_events - (dashboardData.success_logins + dashboardData.failed_logins)
+    };
+
+    new Chart(document.getElementById('eventChart'), {
+        type: 'bar',
+        data: {
+            labels: ['SUCCESS', 'FAILED', 'UNKNOWN'],
+            datasets: [{
+                label: 'Event Count',
+                data: [eventCounts.success, eventCounts.failed, eventCounts.unknown],
+                backgroundColor: ['rgba(0, 212, 255, 0.4)', 'rgba(255, 45, 85, 0.4)', 'rgba(255, 214, 10, 0.4)'],
+                borderColor: ['#00d4ff', '#ff2d55', '#ffd60a'],
+                borderWidth: 1,
+                borderRadius: 1,
+                hoverBackgroundColor: ['rgba(0, 212, 255, 0.7)', 'rgba(255, 45, 85, 0.7)', 'rgba(255, 214, 10, 0.7)']
+            }]
+        },
+        options: {
+            ...chartDefaults,
+            scales: {
+                x: {
+                    ticks: { color: '#5a8fa0', font: { family: "'Share Tech Mono', monospace", size: 9 } },
+                    grid: { color: 'rgba(0, 212, 255, 0.05)' },
+                    border: { color: 'rgba(0, 212, 255, 0.15)' }
+                },
+                y: {
+                    ticks: { color: '#5a8fa0', font: { family: "'Share Tech Mono', monospace", size: 9 } },
+                    grid: { color: 'rgba(0, 212, 255, 0.07)' },
+                    border: { color: 'rgba(0, 212, 255, 0.15)' }
+                }
+            }
+        }
+    });
+
+    // ----------------------------
+    // ALERT CHART
+    // ----------------------------
+    let low = 0, medium = 0, high = 0;
+
+    dashboardData.alerts.forEach(alert => {
+        if (alert.severity === "LOW") low++;
+        if (alert.severity === "MEDIUM") medium++;
+        if (alert.severity === "HIGH") high++;
+    });
+
+    new Chart(document.getElementById('alertChart'), {
+        type: 'pie',
+        data: {
+            labels: ['LOW', 'MEDIUM', 'HIGH'],
+            datasets: [{
+                data: [low, medium, high],
+                backgroundColor: ['rgba(0, 212, 255, 0.6)', 'rgba(255, 214, 10, 0.6)', 'rgba(255, 45, 85, 0.6)'],
+                borderColor: ['#00d4ff', '#ffd60a', '#ff2d55'],
+                borderWidth: 1,
+                hoverBackgroundColor: ['rgba(0, 212, 255, 0.9)', 'rgba(255, 214, 10, 0.9)', 'rgba(255, 45, 85, 0.9)']
+            }]
+        },
+        options: {
+            ...chartDefaults,
+            plugins: {
+                ...chartDefaults.plugins,
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        color: '#5a8fa0',
+                        font: { family: "'Share Tech Mono', monospace", size: 10 },
+                        padding: 12
+                    }
+                }
+            }
+        }
+    });
+</script>
+
+<!-- Matrix Rain -->
+<script>
+(function() {
+    const canvas = document.getElementById('matrix-canvas');
+    const ctx = canvas.getContext('2d');
+
+    function resize() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+    }
+    resize();
+    window.addEventListener('resize', resize);
+
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789<>[]{}|/\\!@#$%^&*アイウエオカキクケコサシスセソタチツテト';
+    const fontSize = 13;
+    let columns = Math.floor(canvas.width / fontSize);
+    let drops = Array(columns).fill(1);
+
+    function draw() {
+        ctx.fillStyle = 'rgba(1, 11, 15, 0.05)';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        for (let i = 0; i < drops.length; i++) {
+            const brightness = Math.random();
+            if (brightness > 0.95) {
+                ctx.fillStyle = '#00ff41';
+                ctx.shadowColor = '#00ff41';
+                ctx.shadowBlur = 8;
+            } else if (brightness > 0.7) {
+                ctx.fillStyle = '#00d4ff';
+                ctx.shadowColor = '#00d4ff';
+                ctx.shadowBlur = 4;
+            } else {
+                ctx.fillStyle = 'rgba(0, 180, 80, 0.6)';
+                ctx.shadowBlur = 0;
+            }
+
+            const char = chars[Math.floor(Math.random() * chars.length)];
+            ctx.font = `${fontSize}px 'Share Tech Mono', monospace`;
+            ctx.fillText(char, i * fontSize, drops[i] * fontSize);
+            ctx.shadowBlur = 0;
+
+            if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) {
+                drops[i] = 0;
+            }
+            drops[i]++;
+        }
+    }
+
+    setInterval(draw, 45);
+    window.addEventListener('resize', () => {
+        columns = Math.floor(canvas.width / fontSize);
+        drops = Array(columns).fill(1);
+    });
+})();
+</script>
+
+<!-- Glitch title -->
+<script>
+(function() {
+    const h1 = document.querySelector('h1');
+    const original = h1.textContent;
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%&';
+    let iteration = 0;
+    let done = false;
+
+    function scramble() {
+        if (done) return;
+        h1.textContent = original.split('').map((char, idx) => {
+            if (char === ' ' || char === '📊') return char;
+            if (idx < iteration) return original[idx];
+            return chars[Math.floor(Math.random() * chars.length)];
+        }).join('');
+
+        iteration += 0.5;
+        if (iteration >= original.length) {
+            h1.textContent = original;
+            done = true;
+        }
+        requestAnimationFrame(scramble);
+    }
+
+    setTimeout(scramble, 400);
+})();
+</script>
+
+</body>
+</html>

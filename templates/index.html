@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Security Monitoring System</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛡</text></svg>">
+</head>
+
+<body>
+
+<!-- Matrix rain canvas -->
+<canvas id="matrix-canvas"></canvas>
+
+<div class="container">
+
+    <!-- Header -->
+    <div style="margin-bottom: 8px;">
+        <div class="section-label">SYSTEM ONLINE // THREAT MONITORING ACTIVE</div>
+    </div>
+
+    <h1 data-text="🛡 Log Security Monitoring System">🛡 Log Security Monitoring System</h1>
+
+    <div class="status-bar">
+        <span><span class="dot"></span>FIREWALL ACTIVE</span>
+        <span style="color: #2a4a5a;">|</span>
+        <span><span class="dot" style="background:#00d4ff; box-shadow: 0 0 8px rgba(0,212,255,0.6);"></span>IDS RUNNING</span>
+        <span style="color: #2a4a5a;">|</span>
+        <span><span class="dot" style="animation-delay:0.7s;"></span>LOG PARSER READY</span>
+    </div>
+
+    <p>Upload logs and detect suspicious activities in real time.<span class="cursor"></span></p>
+
+    <div class="menu">
+        <a href="/dashboard">⬡ Dashboard</a>
+        <a href="/alerts">⚡ Alerts</a>
+    </div>
+
+    <div class="upload-box">
+        <span class="corner corner-tl"></span>
+        <span class="corner corner-tr"></span>
+        <span class="corner corner-bl"></span>
+        <span class="corner corner-br"></span>
+
+        <h3>Upload Log File</h3>
+        <p style="font-size:0.75rem; margin-bottom: 18px; color: #2a4a5a;">// ACCEPTED FORMATS: .log .txt .csv</p>
+
+        <form action="/upload" method="POST" enctype="multipart/form-data">
+            <div class="file-upload">
+                <input type="file" name="file" required>
+            </div>
+            <button class="analyze-btn" type="submit">
+                ▶ Analyze Logs
+            </button>
+        </form>
+    </div>
+
+</div>
+
+<!-- Matrix Rain Script -->
+<script>
+(function() {
+    const canvas = document.getElementById('matrix-canvas');
+    const ctx = canvas.getContext('2d');
+
+    function resize() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+    }
+    resize();
+    window.addEventListener('resize', resize);
+
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789<>[]{}|/\\!@#$%^&*アイウエオカキクケコサシスセソタチツテト';
+    const fontSize = 13;
+    let columns = Math.floor(canvas.width / fontSize);
+    let drops = Array(columns).fill(1);
+
+    function draw() {
+        ctx.fillStyle = 'rgba(1, 11, 15, 0.05)';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        for (let i = 0; i < drops.length; i++) {
+            const brightness = Math.random();
+            if (brightness > 0.95) {
+                ctx.fillStyle = '#00ff41';
+                ctx.shadowColor = '#00ff41';
+                ctx.shadowBlur = 8;
+            } else if (brightness > 0.7) {
+                ctx.fillStyle = '#00d4ff';
+                ctx.shadowColor = '#00d4ff';
+                ctx.shadowBlur = 4;
+            } else {
+                ctx.fillStyle = 'rgba(0, 180, 80, 0.6)';
+                ctx.shadowBlur = 0;
+            }
+
+            const char = chars[Math.floor(Math.random() * chars.length)];
+            ctx.font = `${fontSize}px 'Share Tech Mono', monospace`;
+            ctx.fillText(char, i * fontSize, drops[i] * fontSize);
+
+            ctx.shadowBlur = 0;
+
+            if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) {
+                drops[i] = 0;
+            }
+            drops[i]++;
+        }
+    }
+
+    setInterval(draw, 45);
+    window.addEventListener('resize', () => {
+        columns = Math.floor(canvas.width / fontSize);
+        drops = Array(columns).fill(1);
+    });
+})();
+</script>
+
+<!-- Boot terminal effect -->
+<script>
+(function() {
+    const h1 = document.querySelector('h1');
+    const original = h1.textContent;
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%&';
+    let iteration = 0;
+    let done = false;
+
+    function scramble() {
+        if (done) return;
+        h1.textContent = original.split('').map((char, idx) => {
+            if (char === ' ' || char === '🛡') return char;
+            if (idx < iteration) return original[idx];
+            return chars[Math.floor(Math.random() * chars.length)];
+        }).join('');
+
+        iteration += 0.5;
+        if (iteration >= original.length) {
+            h1.textContent = original;
+            done = true;
+        }
+        requestAnimationFrame(scramble);
+    }
+
+    setTimeout(scramble, 400);
+})();
+</script>
+
+</body>
+</html>

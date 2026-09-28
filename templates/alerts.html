@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Alerts</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+
+<body>
+
+<div class="container">
+
+    <h1>🚨 All Security Alerts</h1>
+
+    {% if alerts %}
+        {% for alert in alerts %}
+            <div class="alert {{ alert.severity|lower }}">
+                <b>{{ alert.type }}</b><br>
+                {{ alert.description }}
+            </div>
+        {% endfor %}
+    {% else %}
+        <p>No alerts generated yet.</p>
+    {% endif %}
+
+    <br>
+    <a href="/">Back Home</a>
+
+</div>
+
+</body>
+</html>
